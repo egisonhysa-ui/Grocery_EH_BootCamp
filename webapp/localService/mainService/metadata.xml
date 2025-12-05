@@ -42,6 +42,9 @@
     <edmx:Reference Uri="/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Vocabularies(TechnicalName='%2FIWBEP%2FVOC_SESSION',Version='0001',SAP__Origin='LOCAL')/$value">
         <edmx:Include Namespace="com.sap.vocabularies.Session.v1" Alias="SAP__session"/>
     </edmx:Reference>
+    <edmx:Reference Uri="/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Vocabularies(TechnicalName='%2FIWBEP%2FVOC_SUPPORT',Version='0001',SAP__Origin='LOCAL')/$value">
+        <edmx:Include Namespace="com.sap.vocabularies.Support.v1" Alias="SAP__support"/>
+    </edmx:Reference>
     <edmx:Reference Uri="/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Vocabularies(TechnicalName='%2FIWBEP%2FVOC_UI',Version='0001',SAP__Origin='LOCAL')/$value">
         <edmx:Include Namespace="com.sap.vocabularies.UI.v1" Alias="SAP__UI"/>
     </edmx:Reference>
@@ -69,6 +72,9 @@
                 <Property Name="Expired" Type="Edm.Boolean" Nullable="false"/>
                 <Property Name="Rating" Type="Edm.Double" Nullable="false"/>
                 <Property Name="Note" Type="Edm.String" Nullable="false" MaxLength="255"/>
+                <Property Name="ImageData" Type="Edm.Binary" Nullable="false"/>
+                <Property Name="MimeType" Type="Edm.String" Nullable="false" MaxLength="128"/>
+                <Property Name="FileName" Type="Edm.String" Nullable="false" MaxLength="255"/>
                 <Property Name="Createdby" Type="Edm.String" Nullable="false" MaxLength="12"/>
                 <Property Name="Createdat" Type="Edm.DateTimeOffset" Precision="7"/>
                 <Property Name="Lastchangedby" Type="Edm.String" Nullable="false" MaxLength="12"/>
@@ -110,7 +116,9 @@
             </EntityType>
             <ComplexType Name="GROCERY_EHOperationControl">
                 <Property Name="checkExpirationDate" Type="Edm.Boolean" Nullable="false"/>
+                <Property Name="deleteImage" Type="Edm.Boolean" Nullable="false"/>
                 <Property Name="Edit" Type="Edm.Boolean" Nullable="false"/>
+                <Property Name="uploadImage" Type="Edm.Boolean" Nullable="false"/>
             </ComplexType>
             <ComplexType Name="EntityControl">
                 <Property Name="Deletable" Type="Edm.Boolean" Nullable="false"/>
@@ -138,9 +146,18 @@
             <Action Name="Discard" IsBound="true">
                 <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
             </Action>
+            <Action Name="deleteImage" IsBound="true">
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
+            </Action>
             <Action Name="checkExpirationDate" EntitySetPath="_it" IsBound="true">
                 <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
                 <ReturnType Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
+            </Action>
+            <Action Name="uploadImage" IsBound="true">
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
+                <Parameter Name="FILE_NAME" Type="Edm.String" Nullable="false" MaxLength="255"/>
+                <Parameter Name="MIME_TYPE" Type="Edm.String" Nullable="false" MaxLength="128"/>
+                <Parameter Name="CONTENT" Type="Edm.Binary" Nullable="false"/>
             </Action>
             <Action Name="Edit" EntitySetPath="_it" IsBound="true">
                 <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.GROCERY_EHType" Nullable="false"/>
@@ -208,6 +225,15 @@
             </Annotations>
             <Annotations Target="SAP__self.GROCERY_EHType/Note">
                 <Annotation Term="SAP__common.Label" String="Note"/>
+            </Annotations>
+            <Annotations Target="SAP__self.GROCERY_EHType/ImageData">
+                <Annotation Term="SAP__core.Computed"/>
+            </Annotations>
+            <Annotations Target="SAP__self.GROCERY_EHType/MimeType">
+                <Annotation Term="SAP__core.Computed"/>
+            </Annotations>
+            <Annotations Target="SAP__self.GROCERY_EHType/FileName">
+                <Annotation Term="SAP__core.Computed"/>
             </Annotations>
             <Annotations Target="SAP__self.GROCERY_EHType/Createdby">
                 <Annotation Term="SAP__core.Computed"/>
@@ -475,8 +501,30 @@
                 <Annotation Term="SAP__UI.Hidden"/>
             </Annotations>
             <Annotations Target="SAP__self.Container/GROCERY_EH">
+                <Annotation Term="SAP__capabilities.NavigationRestrictions">
+                    <Record>
+                        <PropertyValue Property="RestrictedProperties">
+                            <Collection>
+                                <Record>
+                                    <PropertyValue Property="NavigationProperty" NavigationPropertyPath="SiblingEntity"/>
+                                    <PropertyValue Property="InsertRestrictions">
+                                        <Record>
+                                            <PropertyValue Property="Insertable" Bool="false"/>
+                                        </Record>
+                                    </PropertyValue>
+                                    <PropertyValue Property="DeepUpdateSupport">
+                                        <Record>
+                                            <PropertyValue Property="Supported" Bool="false"/>
+                                        </Record>
+                                    </PropertyValue>
+                                </Record>
+                            </Collection>
+                        </PropertyValue>
+                    </Record>
+                </Annotation>
                 <Annotation Term="SAP__common.DraftRoot">
                     <Record>
+                        <PropertyValue Property="ResumeAction" String="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.Resume"/>
                         <PropertyValue Property="ActivationAction" String="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.Activate"/>
                         <PropertyValue Property="PreparationAction" String="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.Prepare"/>
                         <PropertyValue Property="DiscardAction" String="com.sap.gateway.srvd.zui_dbgrocery_eh_o4.v0001.Discard"/>
@@ -556,8 +604,14 @@
                     </Collection>
                 </Annotation>
             </Annotations>
+            <Annotations Target="SAP__self.deleteImage(SAP__self.GROCERY_EHType)">
+                <Annotation Term="SAP__core.OperationAvailable" Path="_it/__OperationControl/deleteImage"/>
+            </Annotations>
             <Annotations Target="SAP__self.checkExpirationDate(SAP__self.GROCERY_EHType)">
                 <Annotation Term="SAP__core.OperationAvailable" Path="_it/__OperationControl/checkExpirationDate"/>
+            </Annotations>
+            <Annotations Target="SAP__self.uploadImage(SAP__self.GROCERY_EHType)">
+                <Annotation Term="SAP__core.OperationAvailable" Path="_it/__OperationControl/uploadImage"/>
             </Annotations>
             <Annotations Target="SAP__self.Edit(SAP__self.GROCERY_EHType)/PreserveChanges">
                 <Annotation Term="SAP__common.IsUpperCase"/>
@@ -592,6 +646,12 @@
                         <String>any</String>
                         <String>all</String>
                     </Collection>
+                </Annotation>
+                <Annotation Term="SAP__support.TechnicalInfoLinks">
+                    <Record>
+                        <PropertyValue Property="Url" String="../../../../default/iwbep/common/0001/$metadata"/>
+                        <PropertyValue Property="FunctionImport" String="GetTechnicalInfoLinks"/>
+                    </Record>
                 </Annotation>
                 <Annotation Term="SAP__capabilities.SupportedFormats">
                     <Collection>
@@ -771,7 +831,17 @@
                 <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
             </Annotations>
+            <Annotations Target="SAP__self.GROCERY_EHOperationControl/deleteImage">
+                <Annotation Term="SAP__common.Label" String="Dyn. Action Control"/>
+                <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
+                <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
+            </Annotations>
             <Annotations Target="SAP__self.GROCERY_EHOperationControl/Edit">
+                <Annotation Term="SAP__common.Label" String="Dyn. Action Control"/>
+                <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
+                <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
+            </Annotations>
+            <Annotations Target="SAP__self.GROCERY_EHOperationControl/uploadImage">
                 <Annotation Term="SAP__common.Label" String="Dyn. Action Control"/>
                 <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
